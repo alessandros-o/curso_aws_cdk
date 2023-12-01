@@ -1,42 +1,35 @@
 package com.myorg;
 
 import software.amazon.awscdk.App;
-import software.amazon.awscdk.Environment;
-import software.amazon.awscdk.StackProps;
-
-import java.util.Arrays;
 
 public class CursoAwsCdkApp {
     public static void main(final String[] args) {
         App app = new App();
 
-        new CursoAwsCdkStack(app, "CursoAwsCdkStack", StackProps.builder()
-                // If you don't specify 'env', this stack will be environment-agnostic.
-                // Account/Region-dependent features and context lookups will not work,
-                // but a single synthesized template can be deployed anywhere.
+        VpcStack vpcStack = new VpcStack(app, "Vpc");
 
-                // Uncomment the next block to specialize this stack for the AWS Account
-                // and Region that are implied by the current CLI configuration.
-                /*
-                .env(Environment.builder()
-                        .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                        .region(System.getenv("CDK_DEFAULT_REGION"))
-                        .build())
-                */
+        ClusterStack clusterStack = new ClusterStack(app, "Cluster", vpcStack.getVpc());
+        //para organizar a ordem de criação das stacks já que existe dependência nesse caso o cluster depende da vpc
+        clusterStack.addDependency(vpcStack);
 
-                // Uncomment the next block if you know exactly what Account and Region you
-                // want to deploy the stack to.
-                /*
-                .env(Environment.builder()
-                        .account("123456789012")
-                        .region("us-east-1")
-                        .build())
-                */
+        RdsStack rdsStack = new RdsStack(app, "Rds", vpcStack.getVpc());
+        rdsStack.addDependency(vpcStack);
 
-                // For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-                .build());
+        SnsStack snsStack = new SnsStack(app, "Sns");
+
+        Service01Stack service01Stack = new Service01Stack(app, "Service01", clusterStack.getCluster(),
+                snsStack.getProductEventTopic());
+        service01Stack.addDependency(clusterStack);
+        service01Stack.addDependency(rdsStack);
+        service01Stack.addDependency(snsStack);
+
+        Service02Stack service02Stack = new Service02Stack(app, "Service02", clusterStack.getCluster(), snsStack.getProductEventTopic());
+        service02Stack.addDependency(clusterStack);
+        service02Stack.addDependency(snsStack);
 
         app.synth();
     }
 }
 
+// para cruar as staks pelo terminal digitar "cdk deploy Vpc Cluster Service01" e os demais serviços que tiver
+// para destruir recursos: cdk destroy Vpc Cluster Service01
