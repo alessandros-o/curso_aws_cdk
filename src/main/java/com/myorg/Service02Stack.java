@@ -2,6 +2,7 @@ package com.myorg;
 
 import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.applicationautoscaling.EnableScalingProps;
+import software.amazon.awscdk.services.dynamodb.Table;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedFargateService;
 import software.amazon.awscdk.services.ecs.patterns.ApplicationLoadBalancedTaskImageOptions;
@@ -19,12 +20,12 @@ import java.util.Map;
 
 public class Service02Stack extends Stack {
 
-    public Service02Stack(final Construct scope, final String id, Cluster cluster, SnsTopic productEventsTopic) {
+    public Service02Stack(final Construct scope, final String id, Cluster cluster, SnsTopic productEventsTopic, Table productEventDdb) {
 
-        this(scope, id, null, cluster, productEventsTopic);
+        this(scope, id, null, cluster, productEventsTopic, productEventDdb);
     }
 
-    public Service02Stack(final Construct scope, final String id, final StackProps props, Cluster cluster, SnsTopic productEventsTopic) {
+    public Service02Stack(final Construct scope, final String id, final StackProps props, Cluster cluster, SnsTopic productEventsTopic, Table productEventDdb) {
         super(scope, id, props);
 
         Queue productEventsDlq = Queue.Builder
@@ -94,7 +95,8 @@ public class Service02Stack extends Stack {
                 .scaleOutCooldown(Duration.seconds(60))// período de análise para destruir as instâncias extras criadas p/ quando tiver o consume médio abaixo de cpu abaixo de 50%
                 .build());
 
-        productEventsQueue.grantConsumeMessages(service02.getTaskDefinition().getTaskRole());
+        productEventsQueue.grantConsumeMessages(service02.getTaskDefinition().getTaskRole());//permissões de acesso
+        productEventDdb.grantReadWriteData(service02.getTaskDefinition().getTaskRole());//permissões de acesso
     }
 }
 
